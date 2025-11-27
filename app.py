@@ -51,15 +51,22 @@ def parse_timestamp(ts_str: str) -> datetime:
 
     raise ValueError(f"Ne mogu parsirati time_stamp: {ts_str}")
 
+def list_data_files():
+    files = []
+    if os.path.isdir(DATA_DIR):
+        for fname in sorted(os.listdir(DATA_DIR)):
+            path = os.path.join(DATA_DIR, fname)
+            if not os.path.isfile(path):
+                continue
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in (".json", ".csv"):
+                files.append(fname)
+    return files
 
 @st.cache_data(show_spinner="Učitavanje podataka iz data/ foldera...")
-def load_all_data():
+def load_all_data(selected_files):
     """
-    Učita SVE JSON/CSV datoteke iz data/ foldera.
-    Vraća:
-    - data: list(dict)
-    - org_names: sortirana lista naziva organizacija
-    - min_date, max_date: raspon datuma u bazi (date ili None)
+    selected_files: iterable imena datoteka (json/csv) koje treba učitati
     """
     data = []
     org_id_to_name = {}
@@ -143,11 +150,10 @@ def load_all_data():
             st.warning(f"Ne mogu učitati CSV datoteku {os.path.basename(path)}: {e}")
 
     # Prođi kroz sve datoteke u data/
-    for fname in sorted(os.listdir(DATA_DIR)):
+    for fname in sorted(selected_files):
         path = os.path.join(DATA_DIR, fname)
         if not os.path.isfile(path):
             continue
-
         ext = os.path.splitext(fname)[1].lower()
         if ext == ".json":
             load_json(path)
@@ -164,7 +170,6 @@ def load_all_data():
     )
 
     return data, org_names, min_date, max_date
-
 
 def calculate_stats(data, org_name, d_from: date, d_to: date):
     """
@@ -263,7 +268,29 @@ st.title("MEVA - AH Statistika (web)")
 st.write("Web verzija alata za pregled broja upita po organizaciji i datumu.")
 
 # Učitavanje podataka
-data, org_names, min_date, max_date = load_all_data()
+# -- odabir baza --
+all_files = list_data_files()
+if not all_files:
+    st.warning(
+        "U `data/` folderu nisu pronađene JSON/CSV datoteke.\n"
+        "Dodaj baze u repo pa redeployaj aplikaciju."
+    )
+    st.stop()
+
+st.markdown("### Baze")
+
+selected_files = st.multiselect(
+    "Odaberi baze koje želiš uključiti u izračun:",
+    options=all_files,
+    default=all_files,
+)
+
+if not selected_files:
+    st.info("Odaberi barem jednu bazu iz liste iznad.")
+    st.stop()
+
+# Učitavanje podataka iz odabranih baza
+data, org_names, min_date, max_date = load_all_data(tuple(selected_files))
 
 if not data:
     st.warning(
