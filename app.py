@@ -7,6 +7,8 @@ from io import BytesIO
 
 import streamlit as st
 from openpyxl import Workbook
+import matplotlib.pyplot as plt  # 👈 novo za grafove
+
 
 # ---------------------------------------------------------
 # PUTEVI I BAZA
@@ -172,7 +174,7 @@ def calculate_stats(data, org_name, d_from: date, d_to: date):
     - uklanja duplikate po (query_vin, time_stamp)
     Vraća:
     - export_rows: list dict-ova spremnih za Excel
-    - per_day: Counter po danu (za grafove kasnije)
+    - per_day: Counter po danu (za grafove)
     - top_vins: lista (vin, count) – top 5
     """
     unique_records = {}
@@ -335,6 +337,79 @@ if st.button("🔍 Prikaži rezultat"):
         )
 
         st.success("Export je spreman za preuzimanje.")
+
+        # -------------------------------------------------
+        # GRAFOVI
+        # -------------------------------------------------
+        st.markdown("### Grafovi")
+
+        # ako nema statistike, ne crtamo
+        if not per_day and not top_vins:
+            st.info("Nema podataka za prikaz grafova.")
+        else:
+            # jedan figure s dva subplota (po danu/mjesecu + top VIN-ovi)
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7))
+            plt.tight_layout(pad=3.0)
+
+            # --- 1) Broj upita po danu ili po mjesecu ---
+            if per_day:
+                if len(per_day) <= 31:
+                    # po danu
+                    dates_sorted = sorted(per_day.keys())
+                    x_labels = [d.strftime("%d.%m.") for d in dates_sorted]
+                    y_values = [per_day[d] for d in dates_sorted]
+                    x_pos = range(len(x_labels))
+                    ax1.bar(x_pos, y_values)
+                    ax1.set_title("Broj upita po danu")
+                else:
+                    # agregacija po mjesecu
+                    per_month = Counter()
+                    for d, cnt in per_day.items():
+                        key = (d.year, d.month)
+                        per_month[key] += cnt
+
+                    months_sorted = sorted(per_month.keys())
+                    x_labels = [f"{m:02d}.{y}" for (y, m) in months_sorted]
+                    y_values = [per_month[k] for k in months_sorted]
+                    x_pos = range(len(x_labels))
+                    ax1.bar(x_pos, y_values)
+                    ax1.set_title("Broj upita po mjesecu")
+
+                ax1.set_ylabel("Broj upita")
+                ax1.set_xticks(list(x_pos))
+                ax1.set_xticklabels(x_labels, rotation=45, ha="right", fontsize=8)
+
+                # ispiši vrijednosti na vrhu stupaca
+                ymax = max(y_values) if y_values else 0
+                if ymax > 0:
+                    ax1.set_ylim(0, ymax * 1.15)
+                    for i, val in enumerate(y_values):
+                        ax1.text(i, val, str(val), ha="center", va="bottom", fontsize=8)
+            else:
+                ax1.text(0.5, 0.5, "Nema podataka", ha="center", va="center")
+                ax1.axis("off")
+
+            # --- 2) Top 5 VIN-ova ---
+            if top_vins:
+                vins, counts = zip(*top_vins)
+                positions = range(len(vins))
+                ax2.barh(positions, counts)
+                ax2.set_yticks(list(positions))
+                ax2.set_yticklabels(vins, fontsize=8)
+                ax2.invert_yaxis()
+                ax2.set_xlabel("Broj upita")
+                ax2.set_title("Top 5 najčešće provjeravanih VIN-ova")
+
+                # prikaži broj desno od svake trake
+                max_count = max(counts)
+                offset = max_count * 0.02
+                for i, val in enumerate(counts):
+                    ax2.text(val + offset, i, str(val), va="center", fontsize=8)
+            else:
+                ax2.text(0.5, 0.5, "Nema podataka", ha="center", va="center")
+                ax2.axis("off")
+
+            st.pyplot(fig)
 
 else:
     st.info("Odaberi kriterije i klikni **'Prikaži rezultat'**.")
