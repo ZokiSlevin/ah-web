@@ -4,11 +4,9 @@ import os
 from datetime import datetime, date
 from collections import Counter
 from io import BytesIO
-
 import streamlit as st
 from openpyxl import Workbook
 import matplotlib.pyplot as plt  # 👈 novo za grafove
-
 
 # ---------------------------------------------------------
 # PUTEVI I BAZA
@@ -18,7 +16,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 os.makedirs(DATA_DIR, exist_ok=True)
-
 
 def parse_timestamp(ts_str: str) -> datetime:
     """
@@ -229,7 +226,6 @@ def calculate_stats(data, org_name, d_from: date, d_to: date):
 
     return export_rows, per_day, top_vins
 
-
 def make_excel_bytes(rows):
     """
     Kreira Excel (u memoriji) iz danih redaka i vraća bytes za download.
@@ -257,15 +253,38 @@ def make_excel_bytes(rows):
     buf.seek(0)
     return buf.read()
 
-
 # ---------------------------------------------------------
 # STREAMLIT UI
 # ---------------------------------------------------------
 
 st.set_page_config(page_title="MEVA - AH Statistika", layout="wide")
 
-st.title("MEVA - AH Statistika (web)")
-st.write("Web verzija alata za pregled broja upita po organizaciji i datumu.")
+def render_header():
+    col_left, col_center, col_right = st.columns([1, 3, 1])
+
+    with col_left:
+        st.image("images/me.png", use_container_width=True)
+
+    with col_center:
+        st.markdown(
+            """
+            <div style="text-align: center; padding-top: 10px;">
+                <div style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">
+                    MEVA - AH Statistika
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    Web verzija alata za pregled i analizu upita
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_right:
+        st.image("images/ah.png", use_container_width=True)
+
+render_header()
+st.markdown("---")
 
 # Učitavanje podataka
 # -- odabir baza --
