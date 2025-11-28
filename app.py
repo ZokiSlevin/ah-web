@@ -259,6 +259,47 @@ def make_excel_bytes(rows):
 
 st.set_page_config(page_title="MEVA - AH Statistika", layout="wide")
 
+# ----------------- AUTH / LOGIN -----------------
+
+def check_password():
+    """Jednostavna login forma, vraća True ako je korisnik ulogiran."""
+
+    # 1) ako je već u session_state i True -> nema potrebe opet pitati
+    if st.session_state.get("authenticated"):
+        return True
+
+    # 2) povuci kredencijale iz secrets (Streamlit Cloud)
+    auth_conf = st.secrets.get("auth", {})
+    valid_username = auth_conf.get("username")
+    valid_password = auth_conf.get("password")
+
+    # fallback za lokalni rad ako nema secrets (nemoj koristiti u produkciji)
+    if not valid_username or not valid_password:
+        valid_username = "admin"
+        valid_password = "admin"
+
+    # 3) prikaži login formu
+    st.markdown("### 🔐 Prijava")
+    username = st.text_input("Korisničko ime")
+    password = st.text_input("Lozinka", type="password")
+    login_btn = st.button("Prijavi se")
+
+    if login_btn:
+        if username == valid_username and password == valid_password:
+            st.session_state["authenticated"] = True
+            st.success("Uspješna prijava.")
+            # rerun da sakrijemo formu i prikažemo aplikaciju
+            st.experimental_rerun()
+        else:
+            st.error("Neispravno korisničko ime ili lozinka.")
+
+    return False
+
+
+# ako login nije prošao -> završi ovdje
+if not check_password():
+    st.stop()
+
 def render_header():
     col_left, col_center, col_right = st.columns([1, 3, 1])
 
