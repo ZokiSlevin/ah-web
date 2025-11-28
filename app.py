@@ -264,11 +264,11 @@ st.set_page_config(page_title="MEVA - AH Statistika", layout="wide")
 def check_password():
     """Jednostavna login forma, vraća True ako je korisnik ulogiran."""
 
-    # 1) ako je već u session_state i True -> nema potrebe opet pitati
+    # ako već imamo flag u session_state i True -> preskoči login
     if st.session_state.get("authenticated"):
         return True
 
-    # 2) povuci kredencijale iz secrets (Streamlit Cloud)
+    # povuci kredencijale iz secrets (Streamlit Cloud)
     auth_conf = st.secrets.get("auth", {})
     valid_username = auth_conf.get("username")
     valid_password = auth_conf.get("password")
@@ -278,8 +278,8 @@ def check_password():
         valid_username = "admin"
         valid_password = "admin"
 
-    # 3) prikaži login formu
     st.markdown("### 🔐 Prijava")
+
     username = st.text_input("Korisničko ime")
     password = st.text_input("Lozinka", type="password")
     login_btn = st.button("Prijavi se")
@@ -288,15 +288,14 @@ def check_password():
         if username == valid_username and password == valid_password:
             st.session_state["authenticated"] = True
             st.success("Uspješna prijava.")
-            # rerun da sakrijemo formu i prikažemo aplikaciju
-            st.experimental_rerun()
         else:
             st.error("Neispravno korisničko ime ili lozinka.")
 
-    return False
+    # ako smo u ovom runu tek postavili authenticated=True,
+    # Streamlit će svejedno rerunati kod nakon klika na button
+    return st.session_state.get("authenticated", False)
 
-
-# ako login nije prošao -> završi ovdje
+# ako login nije prošao -> NE prikazuj ostatak aplikacije
 if not check_password():
     st.stop()
 
